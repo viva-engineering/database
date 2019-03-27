@@ -142,10 +142,10 @@ export class DatabasePool {
 
 					query;
 
-					return resolve(results as any as SelectQueryResult<R>);
+					return resolve(results);
 				}
 
-				return resolve(result as any as WriteQueryResult);
+				return resolve(result);
 			});
 		});
 	}
