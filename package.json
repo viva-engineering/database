@@ -1,0 +1,32 @@
+{
+  "name": "@viva-eng/database",
+  "version": "1.0.0",
+  "description": "A utility for interacting with MySQL / Aurora database clusters",
+  "main": "build/index.js",
+  "scripts": {
+    "build": "tsc --build tsconfig.json"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/viva-engineering/database.git"
+  },
+  "keywords": [
+    "logger"
+  ],
+  "author": "James Brumond <james@jbrumond.me> (http://www.jbrumond.me)",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/viva-engineering/database/issues"
+  },
+  "homepage": "https://github.com/viva-engineering/database#readme",
+  "dependencies": {
+    "@types/mysql": "^2.15.5",
+    "mysql": "^2.16.0"
+  },
+  "devDependencies": {
+    "@types/node": "^11.11.4",
+    "@viva-eng/logger": "^1.0.11",
+    "tslint": "^5.14.0",
+    "typescript": "^3.3.4000"
+  }
+}
