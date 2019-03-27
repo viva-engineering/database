@@ -10,4 +10,5 @@ export interface WriteQueryResult {
 export abstract class WriteQuery {
 	abstract compile(...params: any[]) : string;
 	abstract isRetryable(error: MysqlError) : boolean;
+	abstract toString() : string;
 }

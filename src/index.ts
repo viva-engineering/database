@@ -2,6 +2,7 @@
 import { Logger } from '@viva-eng/logger';
 import { createPool, PoolConfig, PoolConnection, Pool, MysqlError } from 'mysql';
 import { SelectQuery, WriteQuery, SelectQueryResult, WriteQueryResult, Query, QueryResult } from './query';
+import { formatDuration } from './format-duration';
 
 export { SelectQuery, WriteQuery, SelectQueryResult, WriteQueryResult, Query, QueryResult } from './query';
 
@@ -11,8 +12,18 @@ export interface ClusterConfig {
 	logger: Logger
 }
 
-export interface StreamingQueryCallback<T> {
-	(record: T)
+export interface HealthcheckResult {
+	available: boolean,
+	url: string,
+	timeToConnection?: string,
+	duration?: string,
+	warning?: string,
+	info?: string
+}
+
+export interface HealthcheckResults {
+	master: HealthcheckResult,
+	replica: HealthcheckResult
 }
 
 const holdTimers: WeakMap<PoolConnection, NodeJS.Timeout> = new WeakMap();
@@ -21,11 +32,15 @@ export class DatabasePool {
 	protected readonly master: Pool;
 	protected readonly replica: Pool;
 	protected readonly logger: Logger;
+	public readonly masterUrl: string;
+	public readonly replicaUrl: string;
 
 	constructor(protected readonly config: ClusterConfig) {
 		this.logger = config.logger;
 		this.master = makePool(config.master, config.logger);
 		this.replica = makePool(config.replica, config.logger);
+		this.masterUrl = `mysql://${config.master.host}:${config.master.port}/${config.master.database}`;
+		this.replicaUrl = `mysql://${config.master.host}:${config.master.port}/${config.master.database}`;
 	}
 
 	getReadConnection() : Promise<PoolConnection> {
@@ -70,7 +85,13 @@ export class DatabasePool {
 	runQuery<Q extends WriteQuery>(connection: PoolConnection, query: Q, params?: any) : Promise<WriteQueryResult>;
 	runQuery<Q extends SelectQuery<R>, R extends object>(connection: PoolConnection, query: Q, params?: any) : Promise<SelectQueryResult<R>>;
 	runQuery(connection: PoolConnection, query: Query, params?: any, retries?: number) {
+		const startTime = process.hrtime();
 		const isSelect = query instanceof SelectQuery;
+
+		this.logger.verbose('Starting MySQL Query', {
+			threadId: connection.threadId,
+			query: query.toString()
+		});
 
 		return new Promise(async (resolve, reject) => {
 			const compiledQuery = query.compile(params);
@@ -85,12 +106,16 @@ export class DatabasePool {
 			};
 
 			const onError = (error: MysqlError) => {
+				const duration = formatDuration(process.hrtime(startTime));
+
 				if (error.fatal) {
 					this.logger.warn('MySQL Query Error', {
-						thread: connection.threadId,
+						threadId: connection.threadId,
 						code: error.code,
 						fatal: error.fatal,
-						error: error.sqlMessage
+						error: error.sqlMessage,
+						query: query.toString(),
+						duration
 					});
 
 					onRelease(connection);
@@ -103,10 +128,12 @@ export class DatabasePool {
 
 				if (query.isRetryable(error)) {
 					this.logger.warn('MySQL Query Error', {
-						thread: connection.threadId,
+						threadId: connection.threadId,
 						code: error.code,
 						fatal: error.fatal,
 						error: error.sqlMessage,
+						query: query.toString(),
+						duration,
 						retryable: true,
 						retriesRemaining: remainingRetries
 					});
@@ -119,10 +146,12 @@ export class DatabasePool {
 				}
 
 				this.logger.warn('MySQL Query Error', {
-					thread: connection.threadId,
+					threadId: connection.threadId,
 					code: error.code,
 					fatal: error.fatal,
 					error: error.sqlMessage,
+					query: query.toString(),
+					duration,
 					retryable: false
 				});
 
@@ -133,6 +162,14 @@ export class DatabasePool {
 				if (error) {
 					return onError(error);
 				}
+
+				const duration = formatDuration(process.hrtime(startTime));
+
+				this.logger.verbose('MySQL Query Complete', {
+					threadId: connection.threadId,
+					duration,
+					query: query.toString()
+				});
 
 				if (isSelect) {
 					const result = {
@@ -146,6 +183,15 @@ export class DatabasePool {
 				}
 
 				return resolve(results);
+			});
+		});
+	}
+
+	healthcheck() : Promise<HealthcheckResults> {
+		return new Promise(async (resolve, reject) => {
+			resolve({
+				master: await healthcheck(this.masterUrl, this.master),
+				replica: await healthcheck(this.replicaUrl, this.replica)
 			});
 		});
 	}
@@ -165,9 +211,11 @@ const makePool = (config: PoolConfig, logger: Logger) : Pool => {
 };
 
 const onConnection = (logger: Logger) => (connection: PoolConnection) => {
+	logger.silly('New MySQL connection established', { threadId: connection.threadId });
+
 	connection.on('error', (error) => {
 		logger.error('Unhandled MySQL Error', {
-			thread: connection.threadId,
+			threadId: connection.threadId,
 			code: error.code,
 			fatal: error.fatal,
 			error: error.sqlMessage
@@ -203,3 +251,63 @@ const onRelease = (connection: PoolConnection) => {
 		holdTimers.delete(connection);
 	}
 };
+
+const healthcheck = async (url: string, pool: Pool) : Promise<HealthcheckResult> => {
+	try {
+		const result = await testPool(url, pool);
+		const status: HealthcheckResult = {
+			url,
+			available: true,
+			timeToConnection: formatDuration(result.timeToConnection),
+			duration: formatDuration(result.duration)
+		};
+
+		if (result.duration[0] > 0 || result.duration[1] / 10e5 > 50) {
+			status.warning = 'Connection slower than 50ms';
+		}
+
+		return status;
+	}
+
+	catch (error) {
+		return {
+			url,
+			available: false,
+			info: error.code
+		};
+	}
+};
+
+interface TestResult {
+	timeToConnection: [ number, number ],
+	duration: [ number, number ]
+}
+
+const testPool = (url: string, pool: Pool) : Promise<TestResult> => {
+	return new Promise((resolve, reject) => {
+		const startTime = process.hrtime();
+
+		pool.getConnection((error, connection) => {
+			const timeToConnection = process.hrtime(startTime);
+
+			if (error) {
+				return reject(error);
+			}
+
+			connection.query('select version() as version', (error) => {
+				const duration = process.hrtime(startTime);
+
+				connection.release();
+
+				if (error) {
+					return reject(error);
+				}
+
+				resolve({
+					timeToConnection: timeToConnection,
+					duration: duration
+				});
+			});
+		});
+	});
+}

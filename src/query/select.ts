@@ -13,4 +13,5 @@ export interface StreamingSelectCallback<T> {
 export abstract class SelectQuery<T extends object> {
 	abstract compile(...params: any[]) : string;
 	abstract isRetryable(error: MysqlError) : boolean;
+	abstract toString() : string;
 }
