@@ -195,6 +195,13 @@ export class DatabasePool {
 			});
 		});
 	}
+
+	destroy() : Promise<void[]> {
+		return Promise.all([
+			closePool(this.master),
+			closePool(this.replica)
+		]);
+	}
 }
 
 const makePool = (config: PoolConfig, logger: Logger) : Pool => {
@@ -208,6 +215,18 @@ const makePool = (config: PoolConfig, logger: Logger) : Pool => {
 	});
 
 	return pool;
+};
+
+const closePool = (pool: Pool) : Promise<void> => {
+	return new Promise((resolve, reject) => {
+		pool.end((error) => {
+			if (error) {
+				return reject(error);
+			}
+
+			resolve();
+		});
+	});
 };
 
 const onConnection = (logger: Logger) => (connection: PoolConnection) => {
@@ -310,4 +329,4 @@ const testPool = (url: string, pool: Pool) : Promise<TestResult> => {
 			});
 		});
 	});
-}
+};
