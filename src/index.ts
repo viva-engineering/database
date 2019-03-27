@@ -6,6 +6,8 @@ import { formatDuration } from './format-duration';
 
 export { SelectQuery, WriteQuery, SelectQueryResult, WriteQueryResult, Query, QueryResult } from './query';
 
+type Role = 'master' | 'replica';
+
 export interface ClusterConfig {
 	master: PoolConfig,
 	replica: PoolConfig,
@@ -27,6 +29,7 @@ export interface HealthcheckResults {
 }
 
 const holdTimers: WeakMap<PoolConnection, NodeJS.Timeout> = new WeakMap();
+const connectionRoles: WeakMap<PoolConnection, Role> = new WeakMap();
 
 export class DatabasePool {
 	protected readonly master: Pool;
@@ -37,8 +40,8 @@ export class DatabasePool {
 
 	constructor(protected readonly config: ClusterConfig) {
 		this.logger = config.logger;
-		this.master = makePool(config.master, config.logger);
-		this.replica = makePool(config.replica, config.logger);
+		this.master = makePool('master', config.master, config.logger);
+		this.replica = makePool('replica', config.replica, config.logger);
 		this.masterUrl = `mysql://${config.master.host}:${config.master.port}/${config.master.database}`;
 		this.replicaUrl = `mysql://${config.master.host}:${config.master.port}/${config.master.database}`;
 	}
@@ -87,9 +90,11 @@ export class DatabasePool {
 	runQuery(connection: PoolConnection, query: Query, params?: any, retries?: number) {
 		const startTime = process.hrtime();
 		const isSelect = query instanceof SelectQuery;
+		const role = connectionRoles.get(connection);
 
 		this.logger.verbose('Starting MySQL Query', {
 			threadId: connection.threadId,
+			dbRole: role,
 			query: query.toString()
 		});
 
@@ -111,6 +116,7 @@ export class DatabasePool {
 				if (error.fatal) {
 					this.logger.warn('MySQL Query Error', {
 						threadId: connection.threadId,
+						dbRole: role,
 						code: error.code,
 						fatal: error.fatal,
 						error: error.sqlMessage,
@@ -118,7 +124,7 @@ export class DatabasePool {
 						duration
 					});
 
-					onRelease(connection);
+					onRelease(this.logger)(connection);
 					connection.destroy();
 
 					return reject(error);
@@ -129,6 +135,7 @@ export class DatabasePool {
 				if (query.isRetryable(error)) {
 					this.logger.warn('MySQL Query Error', {
 						threadId: connection.threadId,
+						dbRole: role,
 						code: error.code,
 						fatal: error.fatal,
 						error: error.sqlMessage,
@@ -147,6 +154,7 @@ export class DatabasePool {
 
 				this.logger.warn('MySQL Query Error', {
 					threadId: connection.threadId,
+					dbRole: role,
 					code: error.code,
 					fatal: error.fatal,
 					error: error.sqlMessage,
@@ -167,6 +175,7 @@ export class DatabasePool {
 
 				this.logger.verbose('MySQL Query Complete', {
 					threadId: connection.threadId,
+					dbRole: role,
 					duration,
 					query: query.toString()
 				});
@@ -190,8 +199,8 @@ export class DatabasePool {
 	healthcheck() : Promise<HealthcheckResults> {
 		return new Promise(async (resolve, reject) => {
 			resolve({
-				master: await healthcheck(this.masterUrl, this.master),
-				replica: await healthcheck(this.replicaUrl, this.replica)
+				master: await healthcheck(this.logger, this.masterUrl, this.master),
+				replica: await healthcheck(this.logger, this.replicaUrl, this.replica)
 			});
 		});
 	}
@@ -204,12 +213,12 @@ export class DatabasePool {
 	}
 }
 
-const makePool = (config: PoolConfig, logger: Logger) : Pool => {
+const makePool = (role: Role, config: PoolConfig, logger: Logger) : Pool => {
 	const pool = createPool(config);
 
-	pool.on('connection', onConnection(logger));
+	pool.on('connection', onConnection(role, logger));
 	pool.on('acquire', onAcquire(logger));
-	pool.on('release', onRelease);
+	pool.on('release', onRelease(logger));
 	pool.on('enqueue', () => {
 		logger.warn('No remaining connections available in the database pool, queue up query');
 	});
@@ -229,40 +238,41 @@ const closePool = (pool: Pool) : Promise<void> => {
 	});
 };
 
-const onConnection = (logger: Logger) => (connection: PoolConnection) => {
-	logger.silly('New MySQL connection established', { threadId: connection.threadId });
+const onConnection = (role: Role, logger: Logger) => (connection: PoolConnection) => {
+	connectionRoles.set(connection, role);
+
+	logger.silly('New MySQL connection established', { threadId: connection.threadId, dbRole: role });
 
 	connection.on('error', (error) => {
 		logger.error('Unhandled MySQL Error', {
 			threadId: connection.threadId,
+			dbRole: role,
 			code: error.code,
 			fatal: error.fatal,
 			error: error.sqlMessage
 		});
 
 		if (error.fatal) {
-			onRelease(connection);
+			onRelease(logger)(connection);
 			connection.destroy();
-		}
-	});
-
-	connection.on('enqueue', (query) => {
-		if (query.sql) {
-			const startTime = process.hrtime();
-			// const queryFormat = 
 		}
 	});
 };
 
 const onAcquire = (logger: Logger) => (connection: PoolConnection) => {
+	const role = connectionRoles.get(connection);
 	const onHeldTooLong = () => {
-		logger.warn('MySQL connection held for over a minute', { threadId: connection.threadId });
+		logger.warn('MySQL connection held for over a minute', { threadId: connection.threadId, dbRole: role });
 	};
 
 	holdTimers.set(connection, setTimeout(onHeldTooLong, 60000));
 };
 
-const onRelease = (connection: PoolConnection) => {
+const onRelease = (logger: Logger) => (connection: PoolConnection) => {
+	const role = connectionRoles.get(connection);
+
+	logger.silly('New MySQL connection released', { threadId: connection.threadId, dbRole: role });
+
 	const timer = holdTimers.get(connection);
 
 	if (timer) {
@@ -271,9 +281,10 @@ const onRelease = (connection: PoolConnection) => {
 	}
 };
 
-const healthcheck = async (url: string, pool: Pool) : Promise<HealthcheckResult> => {
+const healthcheck = async (logger: Logger, url: string, pool: Pool) : Promise<HealthcheckResult> => {
+
 	try {
-		const result = await testPool(url, pool);
+		const result = await testPool(logger, url, pool);
 		const status: HealthcheckResult = {
 			url,
 			available: true,
@@ -302,7 +313,7 @@ interface TestResult {
 	duration: [ number, number ]
 }
 
-const testPool = (url: string, pool: Pool) : Promise<TestResult> => {
+const testPool = (logger:Logger, url: string, pool: Pool) : Promise<TestResult> => {
 	return new Promise((resolve, reject) => {
 		const startTime = process.hrtime();
 
@@ -312,9 +323,17 @@ const testPool = (url: string, pool: Pool) : Promise<TestResult> => {
 			if (error) {
 				return reject(error);
 			}
+			
+			const role = connectionRoles.get(connection);
 
 			connection.query('select version() as version', (error) => {
 				const duration = process.hrtime(startTime);
+
+				logger.verbose('MySQL Healthcheck Complete', {
+					threadId: connection.threadId,
+					dbRole: role,
+					duration: formatDuration(duration)
+				});
 
 				connection.release();
 
