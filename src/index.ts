@@ -129,23 +129,23 @@ export class DatabasePool {
 				reject(error);
 			};
 
-			connection.query(compiledQuery, (error, result, fields) => {
+			connection.query(compiledQuery, (error, results, fields) => {
 				if (error) {
 					return onError(error);
 				}
 
 				if (isSelect) {
-					const results = {
-						result,
+					const result = {
+						results,
 						fields
 					};
 
 					query;
 
-					return resolve(results);
+					return resolve(result);
 				}
 
-				return resolve(result);
+				return resolve(results);
 			});
 		});
 	}
