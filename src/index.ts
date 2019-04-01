@@ -35,6 +35,7 @@ export interface HealthcheckResults {
 
 const holdTimers: WeakMap<PoolConnection, NodeJS.Timeout> = new WeakMap();
 const connectionRoles: WeakMap<PoolConnection, Role> = new WeakMap();
+const connectionPools: WeakMap<PoolConnection, DatabasePool> = new WeakMap();
 const transactions: WeakMap<PoolConnection, TransactionType> = new WeakMap();
 
 export class DatabasePool {
@@ -46,8 +47,8 @@ export class DatabasePool {
 
 	constructor(protected readonly config: ClusterConfig) {
 		this.logger = config.logger;
-		this.master = makePool('master', config.master, config.logger);
-		this.replica = makePool('replica', config.replica, config.logger);
+		this.master = makePool('master', config.master, config.logger, this);
+		this.replica = makePool('replica', config.replica, config.logger, this);
 		this.masterUrl = `mysql://${config.master.host}:${config.master.port}/${config.master.database}`;
 		this.replicaUrl = `mysql://${config.master.host}:${config.master.port}/${config.master.database}`;
 	}
@@ -347,10 +348,10 @@ export class DatabasePool {
 	}
 }
 
-const makePool = (role: Role, config: PoolConfig, logger: Logger) : Pool => {
+const makePool = (role: Role, config: PoolConfig, logger: Logger, dbPool: DatabasePool) : Pool => {
 	const pool = createPool(config);
 
-	pool.on('connection', onConnection(role, logger));
+	pool.on('connection', onConnection(role, logger, dbPool));
 	pool.on('acquire', onAcquire(logger));
 	pool.on('release', onRelease(logger));
 	pool.on('enqueue', () => {
@@ -372,8 +373,9 @@ const closePool = (pool: Pool) : Promise<void> => {
 	});
 };
 
-const onConnection = (role: Role, logger: Logger) => (connection: PoolConnection) => {
+const onConnection = (role: Role, logger: Logger, dbPool: DatabasePool) => (connection: PoolConnection) => {
 	connectionRoles.set(connection, role);
+	connectionPools.set(connection, dbPool);
 
 	logger.silly('New MySQL connection established', { threadId: connection.threadId, dbRole: role });
 
@@ -404,6 +406,7 @@ const onAcquire = (logger: Logger) => (connection: PoolConnection) => {
 
 const onRelease = (logger: Logger) => (connection: PoolConnection) => {
 	const role = connectionRoles.get(connection);
+	const pool = connectionPools.get(connection);
 	const transactionType = transactions.get(connection);
 
 	if (transactionType != null) {
@@ -413,7 +416,7 @@ const onRelease = (logger: Logger) => (connection: PoolConnection) => {
 			transactionType
 		});
 
-		rollbackTransaction(connection);
+		pool.rollbackTransaction(connection);
 	}
 
 	logger.silly('MySQL connection released', { threadId: connection.threadId, dbRole: role });
