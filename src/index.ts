@@ -8,6 +8,11 @@ export { SelectQueryResult, WriteQueryResult, QueryResult, Query, StreamingSelec
 
 type Role = 'master' | 'replica';
 
+export const enum TransactionType {
+	ReadOnly = 'read only',
+	ReadWrite = 'read write'
+}
+
 export interface ClusterConfig {
 	master: PoolConfig,
 	replica: PoolConfig,
@@ -30,6 +35,7 @@ export interface HealthcheckResults {
 
 const holdTimers: WeakMap<PoolConnection, NodeJS.Timeout> = new WeakMap();
 const connectionRoles: WeakMap<PoolConnection, Role> = new WeakMap();
+const transactions: WeakMap<PoolConnection, TransactionType> = new WeakMap();
 
 export class DatabasePool {
 	protected readonly master: Pool;
@@ -216,6 +222,129 @@ export class DatabasePool {
 			closePool(this.replica)
 		]);
 	}
+
+	async startTransaction(transactionType: TransactionType = TransactionType.ReadOnly) : Promise<PoolConnection> {
+		const connection = transactionType === TransactionType.ReadOnly
+			? await this.getReadConnection()
+			: await this.getWriteConnection();
+
+		const query = transactionType === TransactionType.ReadOnly
+			? 'start transaction read only'
+			: 'start transaction read write';
+
+		const role = connectionRoles.get(connection);
+
+		transactions.set(connection, transactionType);
+
+		this.logger.debug('Starting new MySQL transaction', {
+			threadId: connection.threadId,
+			dbRole: role,
+			transactionType
+		});
+
+		return new Promise((resolve, reject) => {
+			connection.query(query, (error) => {
+				if (error) {
+					this.logger.error('Failed to start MySQL transaction', {
+						threadId: connection.threadId,
+						dbRole: role,
+						transactionType,
+						error
+					});
+
+					return reject(error);
+				}
+
+				resolve(connection);
+			});
+		});
+	}
+
+	commitTransaction(connection: PoolConnection) : Promise<void> {
+		const role = connectionRoles.get(connection);
+		const transactionType = transactions.get(connection);
+
+		return new Promise((resolve, reject) => {
+			if (transactionType == null) {
+				this.logger.error('Attempted to commit a transaction when none was running', {
+					threadId: connection.threadId,
+					dbRole: role
+				});
+
+				return reject(new Error('Cannot commit transaction; none is running'));
+			}
+
+			this.logger.debug('Commiting MySQL transaction', {
+				threadId: connection.threadId,
+				dbRole: role,
+				transactionType
+			});
+
+			connection.query('commit', (error) => {
+				if (error) {
+					this.logger.warn('Failed to commit transaction', {
+						threadId: connection.threadId,
+						dbRole: role,
+						error
+					});
+
+					return reject(error);
+				}
+
+				this.logger.debug('Commit successful', {
+					threadId: connection.threadId,
+					dbRole: role,
+					transactionType
+				});
+
+				transactions.delete(connection);
+				resolve();
+			});
+		});
+	}
+
+	rollbackTransaction(connection: PoolConnection) : Promise<void> {
+		const role = connectionRoles.get(connection);
+		const transactionType = transactions.get(connection);
+
+		return new Promise((resolve, reject) => {
+			if (transactionType == null) {
+				this.logger.error('Attempted to rollback a transaction when none was running', {
+					threadId: connection.threadId,
+					dbRole: role
+				});
+
+				return reject(new Error('Cannot rollback transaction; none is running'));
+			}
+
+			this.logger.debug('Rolling back MySQL transaction', {
+				threadId: connection.threadId,
+				dbRole: role,
+				transactionType
+			});
+
+			connection.query('rollback', (error) => {
+				if (error) {
+					this.logger.warn('Failed to rollback transaction', {
+						threadId: connection.threadId,
+						dbRole: role,
+						error
+					});
+
+					return reject(error);
+				}
+
+				this.logger.debug('Rollback successful', {
+					threadId: connection.threadId,
+					dbRole: role,
+					transactionType
+				});
+
+				transactions.delete(connection);
+				resolve();
+			});
+		});
+	}
 }
 
 const makePool = (role: Role, config: PoolConfig, logger: Logger) : Pool => {
@@ -275,6 +404,17 @@ const onAcquire = (logger: Logger) => (connection: PoolConnection) => {
 
 const onRelease = (logger: Logger) => (connection: PoolConnection) => {
 	const role = connectionRoles.get(connection);
+	const transactionType = transactions.get(connection);
+
+	if (transactionType != null) {
+		logger.error('A connection was released that still had an open transaction; Forcing rollback', {
+			threadId: connection.threadId,
+			dbRole: role,
+			transactionType
+		});
+
+		rollbackTransaction(connection);
+	}
 
 	logger.silly('MySQL connection released', { threadId: connection.threadId, dbRole: role });
 
@@ -287,7 +427,6 @@ const onRelease = (logger: Logger) => (connection: PoolConnection) => {
 };
 
 const healthcheck = async (logger: Logger, url: string, pool: Pool) : Promise<HealthcheckResult> => {
-
 	try {
 		const result = await testPool(logger, url, pool);
 		const status: HealthcheckResult = {
@@ -354,3 +493,4 @@ const testPool = (logger:Logger, url: string, pool: Pool) : Promise<TestResult> 
 		});
 	});
 };
+
