@@ -276,7 +276,7 @@ const onAcquire = (logger: Logger) => (connection: PoolConnection) => {
 const onRelease = (logger: Logger) => (connection: PoolConnection) => {
 	const role = connectionRoles.get(connection);
 
-	logger.silly('New MySQL connection released', { threadId: connection.threadId, dbRole: role });
+	logger.silly('MySQL connection released', { threadId: connection.threadId, dbRole: role });
 
 	const timer = holdTimers.get(connection);
 
