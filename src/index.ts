@@ -1,10 +1,10 @@
 
 import { Logger } from '@viva-eng/logger';
 import { createPool, PoolConfig, PoolConnection, Pool, MysqlError } from 'mysql';
-import { SelectQuery, WriteQuery, SelectQueryResult, WriteQueryResult, Query, QueryResult } from './query';
+import { SelectQueryResult, WriteQueryResult, QueryResult, Query, StreamingSelectCallback, SelectQuery, WriteQuery } from './query';
 import { formatDuration } from './format-duration';
 
-export { SelectQuery, WriteQuery, SelectQueryResult, WriteQueryResult, Query, QueryResult } from './query';
+export { SelectQueryResult, WriteQueryResult, QueryResult, Query, StreamingSelectCallback, SelectQuery, WriteQuery } from './query';
 
 type Role = 'master' | 'replica';
 
@@ -79,24 +79,20 @@ export class DatabasePool {
 	 * @typeparam Q The type of query being executed
 	 * @typeparam R The type of record returned as a result (if running a select query)
 	 */
-	async query<P, Q extends WriteQuery<P>>(query: Q, params?: P) : Promise<WriteQueryResult>;
-	async query<P, Q extends SelectQuery<R, P>, R extends object>(query: Q, params?: P) : Promise<SelectQueryResult<R>>;
-	async query(query: Query, params?) {
+	async query<P, R extends QueryResult>(query: Query<P, R>, params?: P) : Promise<R> {
 		const isSelect = query instanceof SelectQuery;
 		const connection = isSelect
 			? await this.getReadConnection()
 			: await this.getWriteConnection();
 
-		const result = await this.runQuery(connection, query, params) as QueryResult;
+		const result = await this.runQuery(connection, query, params) as R;
 
 		connection.release();
 
 		return result;
 	}
 
-	runQuery<P, Q extends WriteQuery<P>>(connection: PoolConnection, query: Q, params?: P) : Promise<WriteQueryResult>;
-	runQuery<P, Q extends SelectQuery<R, P>, R extends object>(connection: PoolConnection, query: Q, params?: P) : Promise<SelectQueryResult<R>>;
-	runQuery(connection: PoolConnection, query: Query, params?, retries?: number) {
+	runQuery<P, R extends QueryResult>(connection: PoolConnection, query: Query<P, R>, params?: P, retries?: number) : Promise<R> {
 		const startTime = process.hrtime();
 		const isSelect = query instanceof SelectQuery;
 		const role = connectionRoles.get(connection);
@@ -190,14 +186,14 @@ export class DatabasePool {
 				});
 
 				if (isSelect) {
-					const result = {
+					const result: SelectQueryResult<any> = {
 						results,
 						fields
 					};
 
 					query;
 
-					return resolve(result);
+					return resolve(result as R);
 				}
 
 				return resolve(results);
