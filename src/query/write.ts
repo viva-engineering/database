@@ -7,8 +7,8 @@ export interface WriteQueryResult {
 	changedRows: number
 }
 
-export abstract class WriteQuery {
-	abstract compile(...params: any[]) : string;
+export abstract class WriteQuery<P> {
+	abstract compile(params: P) : string;
 	abstract isRetryable(error: MysqlError) : boolean;
 	abstract toString() : string;
 }

@@ -70,9 +70,18 @@ export class DatabasePool {
 		});
 	}
 
-	async query<Q extends WriteQuery>(query: Q, params?: any) : Promise<WriteQueryResult>;
-	async query<Q extends SelectQuery<R>, R extends object>(query: Q, params?: any) : Promise<SelectQueryResult<R>>;
-	async query(query: Query, params?: any) {
+	/**
+	 * Execute a query against the database
+	 *
+	 * @param query The query to run
+	 * @param params Any parameters to pass into the query
+	 * @typeparam P The type of parameters the query takes
+	 * @typeparam Q The type of query being executed
+	 * @typeparam R The type of record returned as a result (if running a select query)
+	 */
+	async query<P, Q extends WriteQuery<P>>(query: Q, params?: P) : Promise<WriteQueryResult>;
+	async query<P, Q extends SelectQuery<R, P>, R extends object>(query: Q, params?: P) : Promise<SelectQueryResult<R>>;
+	async query(query: Query, params?) {
 		const isSelect = query instanceof SelectQuery;
 		const connection = isSelect
 			? await this.getReadConnection()
@@ -85,9 +94,9 @@ export class DatabasePool {
 		return result;
 	}
 
-	runQuery<Q extends WriteQuery>(connection: PoolConnection, query: Q, params?: any) : Promise<WriteQueryResult>;
-	runQuery<Q extends SelectQuery<R>, R extends object>(connection: PoolConnection, query: Q, params?: any) : Promise<SelectQueryResult<R>>;
-	runQuery(connection: PoolConnection, query: Query, params?: any, retries?: number) {
+	runQuery<P, Q extends WriteQuery<P>>(connection: PoolConnection, query: Q, params?: P) : Promise<WriteQueryResult>;
+	runQuery<P, Q extends SelectQuery<R, P>, R extends object>(connection: PoolConnection, query: Q, params?: P) : Promise<SelectQueryResult<R>>;
+	runQuery(connection: PoolConnection, query: Query, params?, retries?: number) {
 		const startTime = process.hrtime();
 		const isSelect = query instanceof SelectQuery;
 		const role = connectionRoles.get(connection);

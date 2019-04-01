@@ -10,8 +10,8 @@ export interface StreamingSelectCallback<T> {
 	(record: T): void;
 }
 
-export abstract class SelectQuery<T extends object> {
-	abstract compile(...params: any[]) : string;
+export abstract class SelectQuery<T extends object, P> {
+	abstract compile(params: P) : string;
 	abstract isRetryable(error: MysqlError) : boolean;
 	abstract toString() : string;
 }
