@@ -104,7 +104,7 @@ export class DatabasePool {
 		const isSelect = query instanceof SelectQuery;
 		const role = connectionRoles.get(connection);
 
-		this.logger.verbose('Starting MySQL Query', {
+		this.logger.debug('Starting MySQL Query', {
 			threadId: connection.threadId,
 			dbRole: role,
 			query: query.toString()
