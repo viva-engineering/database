@@ -55,7 +55,9 @@ export abstract class SelectQuery<P, R> implements Query<P, SelectQueryResult<R>
 	 * Should return a short, abstract representation of the query so it can be identified in the case that the object
 	 * is included in a log somewhere. Simply returning the `template` property is usually probably good enough.
 	 */
-	public abstract toString() : string;
+	public toString() : string {
+		return this.template;
+	}
 }
 
 export abstract class WriteQuery<P> implements Query<P, WriteQueryResult> {
@@ -88,5 +90,7 @@ export abstract class WriteQuery<P> implements Query<P, WriteQueryResult> {
 	 * Should return a short, abstract representation of the query so it can be identified in the case that the object
 	 * is included in a log somewhere. Simply returning the `template` property is usually probably good enough.
 	 */
-	public abstract toString() : string;
+	public toString() : string {
+		return this.template;
+	}
 }
