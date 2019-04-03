@@ -107,7 +107,7 @@ export class DatabasePool {
 		this.logger.debug('Starting MySQL Query', {
 			threadId: connection.threadId,
 			dbRole: role,
-			query: query.toString()
+			query: query.template
 		});
 
 		return new Promise(async (resolve, reject) => {
@@ -132,7 +132,7 @@ export class DatabasePool {
 						code: error.code,
 						fatal: error.fatal,
 						error: error.sqlMessage,
-						query: query.toString(),
+						query: query.template,
 						duration
 					});
 
@@ -151,7 +151,7 @@ export class DatabasePool {
 						code: error.code,
 						fatal: error.fatal,
 						error: error.sqlMessage,
-						query: query.toString(),
+						query: query.template,
 						duration,
 						retryable: true,
 						retriesRemaining: remainingRetries
@@ -170,7 +170,7 @@ export class DatabasePool {
 					code: error.code,
 					fatal: error.fatal,
 					error: error.sqlMessage,
-					query: query.toString(),
+					query: query.template,
 					duration,
 					retryable: false
 				});
@@ -189,7 +189,7 @@ export class DatabasePool {
 					threadId: connection.threadId,
 					dbRole: role,
 					duration,
-					query: query.toString()
+					query: query.template
 				});
 
 				if (isSelect) {
