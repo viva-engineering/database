@@ -92,11 +92,19 @@ export class DatabasePool {
 			? await this.getReadConnection()
 			: await this.getWriteConnection();
 
-		const result = await this.runQuery(connection, query, params) as R;
+		try {
+			const result = await this.runQuery(connection, query, params) as R;
 
-		connection.release();
+			connection.release();
 
-		return result;
+			return result;
+		}
+
+		catch (error) {
+			connection.release();
+
+			throw error;
+		}
 	}
 
 	runQuery<P, R extends QueryResult>(connection: PoolConnection, query: Query<P, R>, params?: P, retries?: number) : Promise<R> {
