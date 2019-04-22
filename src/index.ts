@@ -112,14 +112,15 @@ export class DatabasePool {
 		const isSelect = query instanceof SelectQuery;
 		const role = connectionRoles.get(connection);
 
-		this.logger.debug('Starting MySQL Query', {
-			threadId: connection.threadId,
-			dbRole: role,
-			query: query.template
-		});
-
 		return new Promise(async (resolve, reject) => {
 			const compiledQuery = query.compile(params);
+
+			this.logger.debug('Starting MySQL Query', {
+				threadId: connection.threadId,
+				dbRole: role,
+				query: query.template,
+				sql: compiledQuery
+			});
 
 			const retry = (retries: number) => {
 				const backoff = (4 - retries) ** 2 * 500;
