@@ -94,3 +94,15 @@ export abstract class WriteQuery<P> implements Query<P, WriteQueryResult> {
 		return this.template;
 	}
 }
+
+/**
+ * Represent a select subquery that can be included into another query
+ */
+export abstract class SelectSubQuery<P, R extends { }> {
+	/**
+	 * Compiles the query with the given parameters to provide a finished, executable query
+	 *
+	 * @param params The parameters used to build the query
+	 */
+	public abstract compile(params: P) : string;
+}
