@@ -4,7 +4,7 @@ import { createPool, PoolConfig, PoolConnection, Pool, MysqlError } from 'mysql'
 import { SelectQueryResult, WriteQueryResult, QueryResult, Query, StreamingSelectCallback, SelectQuery, WriteQuery } from './query';
 import { formatDuration } from './format-duration';
 
-export { SelectQueryResult, WriteQueryResult, QueryResult, Query, StreamingSelectCallback, SelectQuery, WriteQuery, SelectSubQuery } from './query';
+export { SelectQueryResult, WriteQueryResult, QueryResult, Query, StreamingSelectCallback, SelectQuery, WriteQuery, SelectSubQuery, RawQueryFragment } from './query';
 
 type Role = 'master' | 'replica';
 
