@@ -95,7 +95,7 @@ export abstract class WriteQuery<P> implements Query<P, WriteQueryResult> {
 	}
 }
 
-export interface RawQueryFragment {
+export interface RawQueryFragment<T extends string> {
 	toSqlString(): string;
 }
 
@@ -105,7 +105,7 @@ export interface RawQueryFragment {
 export abstract class SelectSubQuery<P> {
 	public abstract readonly columns;
 
-	protected raw(sql: string) : RawQueryFragment {
+	protected raw(sql: string) : RawQueryFragment<any> {
 		return {
 			toSqlString() {
 				return sql;
@@ -118,5 +118,5 @@ export abstract class SelectSubQuery<P> {
 	 *
 	 * @param params The parameters used to build the sub-query
 	 */
-	public abstract compile(params: P) : RawQueryFragment;
+	public abstract compile(params: P) : RawQueryFragment<any>;
 }
