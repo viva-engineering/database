@@ -99,6 +99,8 @@ export abstract class WriteQuery<P> implements Query<P, WriteQueryResult> {
  * Represent a select subquery that can be included into another query
  */
 export abstract class SelectSubQuery<P, R extends { }> {
+	public abstract readonly columns: R;
+
 	/**
 	 * Compiles the query with the given parameters to provide a finished, executable query
 	 *
