@@ -1,6 +1,6 @@
 {
   "name": "@viva-eng/database",
-  "version": "1.0.17",
+  "version": "1.0.18",
   "description": "A utility for interacting with MySQL / Aurora database clusters",
   "main": "build/index.js",
   "scripts": {
