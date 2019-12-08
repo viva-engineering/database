@@ -1,122 +1,96 @@
 
-import { MysqlError, FieldInfo } from 'mysql';
+import { DatabasePool } from './index';
+import { formatDuration } from './format-duration';
+import { getConnectionRole, onRelease } from './mysql';
+import { PoolConnection, MysqlError } from 'mysql';
+import { Logger } from '@viva-eng/logger';
 
-export interface SelectQueryResult<R> {
-	results: R[];
-	fields: FieldInfo[];
+export interface Query<Params, Result> {
+	description: string;
+	maxRetries: number;
+	compile: QueryCompiler<Params>;
+	isRetryable: QueryIsRetryableCallback;
+	execute(params: Params, connection: PoolConnection, logger: Logger, retries?: number) : Promise<Result>;
 }
 
-export interface WriteQueryResult {
-	insertId: number | string;
-	affectedRows: number;
-	changedRows: number;
+export interface QueryConfig<Params> {
+	description: string;
+	compile: QueryCompiler<Params>;
+	maxRetries?: number;
+	isRetryable?: QueryIsRetryableCallback;
 }
 
-export type QueryResult = SelectQueryResult<any> | WriteQueryResult;
-
-export interface Query<P, R extends QueryResult> {
-	template: string;
-	compile(params: P): string;
-	isRetryable(error: MysqlError): boolean;
-	toString(): string;
+export interface QueryCompiler<P> {
+	(params: P) : string;
 }
 
-export interface StreamingSelectCallback<T> {
-	(record: T): void;
+export interface QueryIsRetryableCallback {
+	(error: MysqlError) : boolean;
 }
 
-export abstract class SelectQuery<P, R> implements Query<P, SelectQueryResult<R>> {
-	/**
-	 * A short, abstract representation of the query, included in log messages about the query
-	 *
-	 * For example, the value might look something like `select ... from some_table where something = ?`
-	 */
-	public abstract readonly template: string;
+export type QueryParams<Q extends Query<any, any>> = Q extends Query<infer P, any> ? P : never;
+export type QueryResult<Q extends Query<any, any>> = Q extends Query<any, infer R> ? R : never;
 
-	/**
-	 * Compiles the query with the given parameters to provide a finished, executable query
-	 *
-	 * @param params The parameters used to build the query
-	 */
-	public abstract compile(params: P) : string;
+export const onError = <P, R>(error: MysqlError, startTime: [ number, number ], query: Query<P, R>, params: P, logger: Logger, connection: PoolConnection, retries?: number) : Promise<R> => {
+	return new Promise((resolve, reject) => {
+		const threadId = connection.threadId;
+		const dbRole = getConnectionRole(connection);
 
-	/**
-	 * When provided with a MySQL error, should determine if the query is retryable.
-	 *
-	 * For example, if the query failed due to a table lock, its probably retyable, so this method would return true.
-	 * If the query failed because of a constraint violation on the table, it's probably not retryable without some
-	 * kind of corrective action first, so the method would return false.
-	 *
-	 * @param error The error that occurred
-	 */
-	public abstract isRetryable(error: MysqlError) : boolean;
+		if (error.fatal) {
+			logger.warn('MySQL Query Error', {
+				threadId,
+				dbRole,
+				query: query.description,
+				duration: formatDuration(process.hrtime(startTime)),
+				code: error.code,
+				fatal: error.fatal,
+				error: error.sqlMessage
+			});
 
-	/**
-	 * Should return a short, abstract representation of the query so it can be identified in the case that the object
-	 * is included in a log somewhere. Simply returning the `template` property is usually probably good enough.
-	 */
-	public toString() : string {
-		return this.template;
-	}
-}
+			// On fatal errors, make sure the connection is properly destroyed
+			onRelease(logger)(connection);
+			connection.destroy();
 
-export abstract class WriteQuery<P> implements Query<P, WriteQueryResult> {
-	/**
-	 * A short, abstract representation of the query, included in log messages about the query
-	 *
-	 * For example, the value might look something like `insert into some_table (...) values (...)`
-	 */
-	public abstract readonly template: string;
-	
-	/**
-	 * Compiles the query with the given parameters to provide a finished, executable query
-	 *
-	 * @param params The parameters used to build the query
-	 */
-	public abstract compile(params: P) : string;
+			return reject(error);
+		}
 
-	/**
-	 * When provided with a MySQL error, should determine if the query is retryable.
-	 *
-	 * For example, if the query failed due to a table lock, its probably retyable, so this method would return true.
-	 * If the query failed because of a constraint violation on the table, it's probably not retryable without some
-	 * kind of corrective action first, so the method would return false.
-	 *
-	 * @param error The error that occurred
-	 */
-	public abstract isRetryable(error: MysqlError) : boolean;
+		if (query.isRetryable(error)) {
+			const remainingRetries = retries == null ? query.maxRetries : retries;
 
-	/**
-	 * Should return a short, abstract representation of the query so it can be identified in the case that the object
-	 * is included in a log somewhere. Simply returning the `template` property is usually probably good enough.
-	 */
-	public toString() : string {
-		return this.template;
-	}
-}
+			logger.warn('MySQL Query Error', {
+				threadId,
+				dbRole,
+				query: query.description,
+				duration: formatDuration(process.hrtime(startTime)),
+				retryable: true,
+				remainingRetries,
+				code: error.code,
+				fatal: error.fatal,
+				error: error.sqlMessage
+			});
 
-export interface RawQueryFragment<T extends string> {
-	toSqlString(): string;
-}
+			if (remainingRetries) {
+				const backoff = (query.maxRetries - retries) ** 2 * 500;
 
-/**
- * Represent a select sub-query that can be included into another query
- */
-export abstract class SelectSubQuery<P> {
-	public abstract readonly columns;
-
-	protected raw(sql: string) : RawQueryFragment<any> {
-		return {
-			toSqlString() {
-				return sql;
+				setTimeout(() => {
+					query.execute(params, connection, logger, retries).then(resolve, reject);
+				}, backoff);
 			}
-		};
-	}
 
-	/**
-	 * Compiles the sub-query with the given parameters to provide a finished, executable query
-	 *
-	 * @param params The parameters used to build the sub-query
-	 */
-	public abstract compile(params: P) : RawQueryFragment<any>;
-}
+			return reject(error);
+		}
+
+		logger.warn('MySQL Query Error', {
+			threadId,
+			dbRole,
+			query: query.description,
+			duration: formatDuration(process.hrtime(startTime)),
+			retryable: true,
+			code: error.code,
+			fatal: error.fatal,
+			error: error.sqlMessage
+		});
+
+		return reject(error);
+	});
+};
