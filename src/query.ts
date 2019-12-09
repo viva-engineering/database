@@ -21,7 +21,7 @@ export interface QueryConfig<Params> {
 }
 
 export interface QueryCompiler<P> {
-	(params: P) : string;
+	(params: P) : string | Promise<string>;
 }
 
 export interface QueryIsRetryableCallback {

@@ -26,7 +26,7 @@ export class SelectQuery<Params, Record> implements Query<Params, SelectQueryRes
 
 	public async execute(params: Params, connection: PoolConnection, logger: Logger, retries?: number) : Promise<SelectQueryResult<Record>> {
 		const startTime = process.hrtime();
-		const compiled = this.compile(params);
+		const compiled = await this.compile(params);
 
 		const threadId = connection.threadId;
 		const dbRole = getConnectionRole(connection);

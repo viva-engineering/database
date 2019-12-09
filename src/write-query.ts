@@ -27,7 +27,7 @@ export class WriteQuery<Params> implements Query<Params, WriteQueryResult> {
 
 	public async execute(params: Params, connection: PoolConnection, logger: Logger, retries?: number) : Promise<WriteQueryResult> {
 		const startTime = process.hrtime();
-		const compiled = this.compile(params);
+		const compiled = await this.compile(params);
 
 		const threadId = connection.threadId;
 		const dbRole = getConnectionRole(connection);
