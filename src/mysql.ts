@@ -162,7 +162,7 @@ export const testPool = (logger:Logger, url: string, pool: Pool) : Promise<TestR
 	return new Promise((resolve, reject) => {
 		const startTime = process.hrtime();
 
-		pool.getConnection((error, connection) => {
+		pool.getConnection((error, connection: PoolConnection) => {
 			const timeToConnection = process.hrtime(startTime);
 
 			if (error) {

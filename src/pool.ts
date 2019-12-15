@@ -1,9 +1,9 @@
 
 import { Logger } from '@viva-eng/logger';
 import { formatDuration } from './format-duration';
-import { createPool, format, PoolConfig, PoolConnection, Pool, MysqlError } from 'mysql';
-import { Query } from './query';
-import { SelectQuery } from './select-query';
+import { createPool, format, PoolConfig, PoolConnection, Pool, MysqlError } from 'mysql2';
+import { Query } from './query/query';
+import { SelectQuery } from './query/select-query';
 import {
 	makePool,
 	getConnectionRole,
@@ -44,7 +44,7 @@ export class DatabasePool {
 	 */
 	public getReadConnection() : Promise<PoolConnection> {
 		return new Promise((resolve, reject) => {
-			this.replica.getConnection((error, connection) => {
+			this.replica.getConnection((error, connection: PoolConnection) => {
 				if (error) {
 					return reject(error);
 				}
@@ -59,7 +59,7 @@ export class DatabasePool {
 	 */
 	public getWriteConnection() : Promise<PoolConnection> {
 		return new Promise((resolve, reject) => {
-			this.master.getConnection((error, connection) => {
+			this.master.getConnection((error, connection: PoolConnection) => {
 				if (error) {
 					return reject(error);
 				}
