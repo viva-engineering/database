@@ -1,16 +1,11 @@
 
-import { DatabasePool } from './pool';
-import { formatDuration } from './format-duration';
-import { getConnectionRole, onRelease } from './mysql';
+import { DatabasePool } from '../pool';
+import { formatDuration } from '../format-duration';
+import { getConnectionRole, onRelease } from '../mysql';
 import { Query, QueryCompiler, QueryIsRetryableCallback, onError, QueryConfig } from './query';
-import { FieldInfo, PoolConnection, MysqlError } from 'mysql';
+import { FieldInfo, PoolConnection, MysqlError } from 'mysql2';
+import { WriteQueryResult } from './results';
 import { Logger } from '@viva-eng/logger';
-
-export interface WriteQueryResult {
-	insertId: number | string;
-	affectedRows: number;
-	changedRows: number;
-}
 
 export class WriteQuery<Params> implements Query<Params, WriteQueryResult> {
 	public readonly description: string;

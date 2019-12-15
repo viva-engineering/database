@@ -1,7 +1,7 @@
 
 import { DatabasePool } from './pool';
 import { formatDuration } from './format-duration';
-import { createPool, format, PoolConfig, PoolConnection, Pool, MysqlError } from 'mysql';
+import { createPool, format, PoolConfig, PoolConnection, Pool, MysqlError } from 'mysql2';
 import { Logger } from '@viva-eng/logger';
 
 export type Role = 'master' | 'replica';

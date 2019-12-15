@@ -1,15 +1,11 @@
 
-import { DatabasePool } from './pool';
-import { formatDuration } from './format-duration';
-import { getConnectionRole, onRelease } from './mysql';
+import { DatabasePool } from '../pool';
+import { formatDuration } from '../format-duration';
+import { getConnectionRole, onRelease } from '../mysql';
 import { Query, QueryCompiler, QueryIsRetryableCallback, onError, QueryConfig } from './query';
-import { FieldInfo, PoolConnection, MysqlError } from 'mysql';
+import { FieldInfo, PoolConnection, MysqlError } from 'mysql2';
+import { SelectQueryResult } from './results';
 import { Logger } from '@viva-eng/logger';
-
-export interface SelectQueryResult<Record> {
-	results: Record[];
-	fields: FieldInfo[];
-}
 
 export class SelectQuery<Params, Record> implements Query<Params, SelectQueryResult<Record>> {
 	public readonly description: string;

@@ -20,8 +20,8 @@
   },
   "homepage": "https://github.com/viva-engineering/database#readme",
   "dependencies": {
-    "@types/mysql": "^2.15.5",
-    "mysql": "^2.16.0"
+    "@types/mysql": "^2.15.8",
+    "mysql2": "^2.0.2"
   },
   "devDependencies": {
     "@types/node": "^11.11.4",

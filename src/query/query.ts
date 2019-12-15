@@ -1,14 +1,13 @@
 
-import { DatabasePool } from './index';
-import { formatDuration } from './format-duration';
-import { getConnectionRole, onRelease } from './mysql';
-import { PoolConnection, MysqlError } from 'mysql';
+import { DatabasePool } from '../pool';
+import { formatDuration } from '../format-duration';
+import { getConnectionRole, onRelease } from '../mysql';
+import { PoolConnection, MysqlError } from 'mysql2';
 import { Logger } from '@viva-eng/logger';
 
 export interface Query<Params, Result> {
 	description: string;
 	maxRetries: number;
-	compile: QueryCompiler<Params>;
 	isRetryable: QueryIsRetryableCallback;
 	execute(params: Params, connection: PoolConnection, logger: Logger, retries?: number) : Promise<Result>;
 }
@@ -18,6 +17,18 @@ export interface QueryConfig<Params> {
 	compile: QueryCompiler<Params>;
 	maxRetries?: number;
 	isRetryable?: QueryIsRetryableCallback;
+}
+
+export interface PreparedQueryConfig<Params> {
+	description: string;
+	prepared: string;
+	prepareParams: ParamCompiler<Params>;
+	maxRetries?: number;
+	isRetryable?: QueryIsRetryableCallback;
+}
+
+export interface ParamCompiler<P> {
+	(params: P) : any[] | Promise<any[]>;
 }
 
 export interface QueryCompiler<P> {
