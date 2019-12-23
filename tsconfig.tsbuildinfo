@@ -321,9 +321,17 @@
         "version": "b3a3d05185ea7b2f52851845f9679203862d3ab918717886b536700152c3ac3c",
         "signature": "b3a3d05185ea7b2f52851845f9679203862d3ab918717886b536700152c3ac3c"
       },
+      "./node_modules/@types/mysql/index.d.ts": {
+        "version": "64c77c2816bb60855b637880598fc3b7f1233614e17e09f29d51e7476222b6bf",
+        "signature": "64c77c2816bb60855b637880598fc3b7f1233614e17e09f29d51e7476222b6bf"
+      },
+      "./typings/mysql2.d.ts": {
+        "version": "2e776bbda6582aa2492bab01408c24e738d86579d709457e6bc652f696d2bf17",
+        "signature": "2e776bbda6582aa2492bab01408c24e738d86579d709457e6bc652f696d2bf17"
+      },
       "./src/mysql.ts": {
-        "version": "4c4c742d019ded6f44a494e56f1b63e85759d4c3badb66ef128f70bb71f08629",
-        "signature": "c948dac4738b8f785deb0f20a4eff29c59a8e76e68aee2c38a66bf3b9319316f"
+        "version": "9276ee2dbb32b558b77faeaafb78607a7b7327478ded0f3e0858d2393670c59b",
+        "signature": "bdfbce8f30add21515e923978e1920014f1a2c2e27308603c96ed68205273b2e"
       },
       "./src/query/query.ts": {
         "version": "f876063c46a7a366e3d1482623b5556d13f1def9afa796609944aaf10af4dc02",
@@ -356,14 +364,6 @@
       "./src/index.ts": {
         "version": "1e3d061f4e327e03e02e5f20749d20076ca319443b777ea2d76fccff15c8b37c",
         "signature": "259e0e73ee63dc550862a2a6ac5a36345b19c6051de701d0901f51beb4492869"
-      },
-      "./node_modules/@types/mysql/index.d.ts": {
-        "version": "64c77c2816bb60855b637880598fc3b7f1233614e17e09f29d51e7476222b6bf",
-        "signature": "64c77c2816bb60855b637880598fc3b7f1233614e17e09f29d51e7476222b6bf"
-      },
-      "./src/mysql2.d.ts": {
-        "version": "2e776bbda6582aa2492bab01408c24e738d86579d709457e6bc652f696d2bf17",
-        "signature": "2e776bbda6582aa2492bab01408c24e738d86579d709457e6bc652f696d2bf17"
       },
       "./node_modules/@types/eslint-visitor-keys/index.d.ts": {
         "version": "725d9be2fd48440256f4deb00649adffdbc5ecd282b09e89d4e200663792c34c",
@@ -826,10 +826,22 @@
         "./node_modules/@types/node/util.d.ts",
         "./node_modules/@types/node/ts3.2/util.d.ts"
       ],
+      "./node_modules/@types/mysql/index.d.ts": [
+        "./node_modules/@types/node/stream.d.ts",
+        "./node_modules/@types/node/tls.d.ts",
+        "./node_modules/@types/node/ts3.2/index.d.ts",
+        "./node_modules/@types/node/util.d.ts",
+        "./node_modules/@types/node/ts3.2/util.d.ts"
+      ],
+      "./typings/mysql2.d.ts": [
+        "./node_modules/@types/mysql/index.d.ts",
+        "./node_modules/@types/node/util.d.ts",
+        "./node_modules/@types/node/ts3.2/util.d.ts"
+      ],
       "./src/mysql.ts": [
         "./src/pool.ts",
         "./src/format-duration.ts",
-        "./src/mysql2.d.ts",
+        "./typings/mysql2.d.ts",
         "./node_modules/@viva-eng/logger/build/index.d.ts",
         "./node_modules/@types/node/util.d.ts",
         "./node_modules/@types/node/ts3.2/util.d.ts"
@@ -838,13 +850,13 @@
         "./src/pool.ts",
         "./src/format-duration.ts",
         "./src/mysql.ts",
-        "./src/mysql2.d.ts",
+        "./typings/mysql2.d.ts",
         "./node_modules/@viva-eng/logger/build/index.d.ts",
         "./node_modules/@types/node/util.d.ts",
         "./node_modules/@types/node/ts3.2/util.d.ts"
       ],
       "./src/query/results.ts": [
-        "./src/mysql2.d.ts",
+        "./typings/mysql2.d.ts",
         "./node_modules/@types/node/util.d.ts",
         "./node_modules/@types/node/ts3.2/util.d.ts"
       ],
@@ -853,7 +865,7 @@
         "./src/format-duration.ts",
         "./src/mysql.ts",
         "./src/query/query.ts",
-        "./src/mysql2.d.ts",
+        "./typings/mysql2.d.ts",
         "./src/query/results.ts",
         "./node_modules/@viva-eng/logger/build/index.d.ts",
         "./node_modules/@types/node/util.d.ts",
@@ -862,7 +874,7 @@
       "./src/pool.ts": [
         "./node_modules/@viva-eng/logger/build/index.d.ts",
         "./src/format-duration.ts",
-        "./src/mysql2.d.ts",
+        "./typings/mysql2.d.ts",
         "./src/query/query.ts",
         "./src/query/select-query.ts",
         "./src/mysql.ts",
@@ -874,7 +886,7 @@
         "./src/format-duration.ts",
         "./src/mysql.ts",
         "./src/query/query.ts",
-        "./src/mysql2.d.ts",
+        "./typings/mysql2.d.ts",
         "./src/query/results.ts",
         "./node_modules/@viva-eng/logger/build/index.d.ts",
         "./node_modules/@types/node/util.d.ts",
@@ -885,7 +897,7 @@
         "./src/format-duration.ts",
         "./src/mysql.ts",
         "./src/query/query.ts",
-        "./src/mysql2.d.ts",
+        "./typings/mysql2.d.ts",
         "./src/query/results.ts",
         "./node_modules/@viva-eng/logger/build/index.d.ts",
         "./node_modules/@types/node/util.d.ts",
@@ -896,7 +908,7 @@
         "./src/format-duration.ts",
         "./src/mysql.ts",
         "./src/query/query.ts",
-        "./src/mysql2.d.ts",
+        "./typings/mysql2.d.ts",
         "./src/query/results.ts",
         "./node_modules/@viva-eng/logger/build/index.d.ts",
         "./node_modules/@types/node/util.d.ts",
@@ -911,18 +923,6 @@
         "./src/query/prepared-select-query.ts",
         "./src/query/prepared-write-query.ts",
         "./src/mysql.ts",
-        "./node_modules/@types/node/util.d.ts",
-        "./node_modules/@types/node/ts3.2/util.d.ts"
-      ],
-      "./node_modules/@types/mysql/index.d.ts": [
-        "./node_modules/@types/node/stream.d.ts",
-        "./node_modules/@types/node/tls.d.ts",
-        "./node_modules/@types/node/ts3.2/index.d.ts",
-        "./node_modules/@types/node/util.d.ts",
-        "./node_modules/@types/node/ts3.2/util.d.ts"
-      ],
-      "./src/mysql2.d.ts": [
-        "./node_modules/@types/mysql/index.d.ts",
         "./node_modules/@types/node/util.d.ts",
         "./node_modules/@types/node/ts3.2/util.d.ts"
       ],
@@ -1046,7 +1046,7 @@
       ],
       "./src/query/prepared-write-query.ts": [
         "./src/query/query.ts",
-        "./src/mysql2.d.ts",
+        "./typings/mysql2.d.ts",
         "./node_modules/@viva-eng/logger/build/index.d.ts",
         "./src/query/results.ts"
       ],
@@ -1062,34 +1062,34 @@
       ],
       "./src/query/prepared-select-query.ts": [
         "./src/query/query.ts",
-        "./src/mysql2.d.ts",
+        "./typings/mysql2.d.ts",
         "./node_modules/@viva-eng/logger/build/index.d.ts",
         "./src/query/results.ts"
       ],
       "./src/query/write-query.ts": [
         "./src/query/query.ts",
-        "./src/mysql2.d.ts",
+        "./typings/mysql2.d.ts",
         "./node_modules/@viva-eng/logger/build/index.d.ts",
         "./src/query/results.ts"
       ],
       "./src/pool.ts": [
-        "./src/mysql2.d.ts",
+        "./typings/mysql2.d.ts",
         "./node_modules/@viva-eng/logger/build/index.d.ts",
         "./src/query/query.ts",
         "./src/mysql.ts"
       ],
       "./src/query/select-query.ts": [
         "./src/query/query.ts",
-        "./src/mysql2.d.ts",
+        "./typings/mysql2.d.ts",
         "./node_modules/@viva-eng/logger/build/index.d.ts",
         "./src/query/results.ts"
       ],
       "./src/query/query.ts": [
-        "./src/mysql2.d.ts",
+        "./typings/mysql2.d.ts",
         "./node_modules/@viva-eng/logger/build/index.d.ts"
       ],
       "./src/mysql.ts": [
-        "./src/mysql2.d.ts",
+        "./typings/mysql2.d.ts",
         "./node_modules/@viva-eng/logger/build/index.d.ts",
         "./src/pool.ts"
       ],
@@ -1157,13 +1157,13 @@
         "./node_modules/@types/node/util.d.ts",
         "./node_modules/@types/node/ts3.2/util.d.ts"
       ],
-      "./src/mysql2.d.ts": [
+      "./typings/mysql2.d.ts": [
         "./node_modules/@types/mysql/index.d.ts",
         "./node_modules/@types/node/util.d.ts",
         "./node_modules/@types/node/ts3.2/util.d.ts"
       ],
       "./src/query/results.ts": [
-        "./src/mysql2.d.ts"
+        "./typings/mysql2.d.ts"
       ],
       "./node_modules/@viva-eng/logger/build/output/cluster.d.ts": [
         "./node_modules/@types/node/stream.d.ts",
@@ -1490,6 +1490,8 @@
       "./node_modules/colors/index.d.ts",
       "./node_modules/@viva-eng/logger/build/format/readable.d.ts",
       "./node_modules/@viva-eng/logger/build/index.d.ts",
+      "./node_modules/@types/mysql/index.d.ts",
+      "./typings/mysql2.d.ts",
       "./src/mysql.ts",
       "./src/query/query.ts",
       "./src/query/results.ts",
@@ -1499,8 +1501,6 @@
       "./src/query/prepared-select-query.ts",
       "./src/query/prepared-write-query.ts",
       "./src/index.ts",
-      "./node_modules/@types/mysql/index.d.ts",
-      "./src/mysql2.d.ts",
       "./node_modules/@types/eslint-visitor-keys/index.d.ts",
       "./node_modules/@types/json-schema/index.d.ts",
       "./node_modules/typescript/lib/lib.es2015.d.ts",

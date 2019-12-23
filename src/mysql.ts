@@ -1,3 +1,4 @@
+/// <reference path="../typings/mysql2.d.ts" />
 
 import { DatabasePool } from './pool';
 import { formatDuration } from './format-duration';
