@@ -33,7 +33,7 @@ export class WriteQuery<Params> implements Query<Params, WriteQueryResult> {
 
 			connection.query(compiled, (error, results, fields) => {
 				if (error) {
-					return onError(error, startTime, this, params, logger, connection, retries);
+					return onError(error, startTime, this, params, logger, connection, retries).then(resolve, reject);
 				}
 
 				logger.verbose('Completed MySQL Query', {

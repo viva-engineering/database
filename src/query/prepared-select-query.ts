@@ -35,7 +35,7 @@ export class PreparedSelectQuery<Params, Record> implements Query<Params, Select
 
 			connection.execute(this.prepared, preparedParams, (error, results, fields) => {
 				if (error) {
-					return onError(error, startTime, this, params, logger, connection, retries);
+					return onError(error, startTime, this, params, logger, connection, retries).then(resolve, reject);
 				}
 
 				logger.verbose('Completed MySQL Query', {

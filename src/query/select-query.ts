@@ -33,7 +33,7 @@ export class SelectQuery<Params, Record> implements Query<Params, SelectQueryRes
 
 			connection.query(compiled, (error, results, fields) => {
 				if (error) {
-					return onError(error, startTime, this, params, logger, connection, retries);
+					return onError(error, startTime, this, params, logger, connection, retries).then(resolve, reject);
 				}
 
 				logger.verbose('Completed MySQL Query', {
